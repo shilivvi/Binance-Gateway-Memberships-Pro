@@ -21,14 +21,12 @@ class PMProGateway_binance extends PMProGateway
         add_filter('pmpro_payment_option_fields', array('PMProGateway_binance', 'pmpro_payment_option_fields'), 10, 2);
 
         $gateway = pmpro_getOption('gateway');
-        if($gateway == 'binance')
-        {
+        if ($gateway == 'binance') {
             add_filter('pmpro_include_billing_address_fields', '__return_false');
             add_filter('pmpro_include_payment_information_fields', '__return_false');
             add_filter('pmpro_required_billing_fields', array('PMProGateway_binance', 'pmpro_required_billing_fields'));
             add_filter('pmpro_checkout_default_submit_button', array('PMProGateway_binance', 'pmpro_checkout_default_submit_button'));
-            //add_filter('pmpro_checkout_order', array('PMProGateway_example', 'pmpro_checkout_order'));
-            //add_filter('pmpro_include_cardtype_field', array('PMProGateway_example', 'pmpro_include_billing_address_fields'));
+            add_filter('pmpro_checkout_before_change_membership_level', array('PMProGateway_binance', 'pmpro_checkout_before_change_membership_level'), 10, 2);
         }
     }
 
@@ -139,13 +137,17 @@ class PMProGateway_binance extends PMProGateway
     {
         global $gateway, $pmpro_requirebilling;
 
-        error_log(print_r(pmpro_getOption('binance_api_key'), 1));
-
         //show our submit buttons
         ?>
         <span id="pmpro_submit_span">
-				<input type="hidden" name="submit-checkout" value="1" />
-				<input type="submit" class="<?php echo pmpro_get_element_class( 'pmpro_btn pmpro_btn-submit-checkout', 'pmpro_btn-submit-checkout' ); ?>" value="<?php if($pmpro_requirebilling) { _e('Check Out with Binance Pay', BINANCEPMP ); } else { _e('Submit and Confirm', BINANCEPMP );}?> &raquo;" />
+				<input type="hidden" name="submit-checkout" value="1"/>
+				<input type="submit"
+                       class="<?php echo pmpro_get_element_class('pmpro_btn pmpro_btn-submit-checkout', 'pmpro_btn-submit-checkout'); ?>"
+                       value="<?php if ($pmpro_requirebilling) {
+                           _e('Check Out with Binance Pay', BINANCEPMP);
+                       } else {
+                           _e('Submit and Confirm', BINANCEPMP);
+                       } ?> &raquo;"/>
 			</span>
         <?php
 
@@ -158,14 +160,111 @@ class PMProGateway_binance extends PMProGateway
      */
     function process(&$order)
     {
-        if(empty($order->code)){
+        if (empty($order->code)) {
             $order->code = $order->getRandomCode();
         }
 
         //just save, the user will go to binance to pay
-        $order->status = "pending";
+        $order->status = 'pending';
         $order->saveOrder();
 
         return true;
     }
+
+    /**
+     * Instead of change membership levels, send users to BinancePay to pay.
+     */
+    static function pmpro_checkout_before_change_membership_level($user_id, $morder)
+    {
+        global $wpdb;
+
+        //If no order, no need to pay
+        if (empty($morder)) {
+            return;
+        }
+
+        $morder->user_id = $user_id;
+        $morder->saveOrder();
+
+        //Save discount code use
+        if (isset($morder->membership_level) && !empty($morder->membership_level->code_id)) {
+            $discount_code_id = (int)$morder->membership_level->code_id;
+            $wpdb->query("INSERT INTO $wpdb->pmpro_discount_codes_uses (code_id, user_id, order_id, timestamp) VALUES('" . $discount_code_id . "', '" . $user_id . "', '" . $morder->id . "', now())");
+        }
+
+        $morder->Gateway->sendToBinancePay($morder);
+    }
+
+
+    function sendToBinancePay(&$order)
+    {
+        $order_id = $order->code;
+        $membership_id = $order->membership_level->id;
+        $membership_name = $order->membership_level->name;
+        $chars_for_nonce = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $api_key = pmpro_getOption('binance_api_key');
+        $secret_key = pmpro_getOption('binance_secret_key');
+
+        // Generate nonce
+        $nonce = '';
+        for ($i = 1; $i <= 32; $i++) {
+            $pos = mt_rand(0, strlen($chars_for_nonce) - 1);
+            $char = $chars_for_nonce[$pos];
+            $nonce .= $char;
+        }
+
+        // Request body
+        $request = array(
+            'env' => array(
+                'terminalType' => 'WEB',
+            ),
+            'merchantTradeNo' => $order_id,
+            'orderAmount' => 25.17,
+            'currency' => 'USDT',
+            'goods' => array(
+                'goodsType' => '02',
+                'goodsCategory' => 'Z000',
+                'referenceGoodsId' => $membership_id,
+                'goodsName' => $membership_name,
+            ),
+        );
+
+        $json_request = json_encode($request);
+
+        // Generate payload
+        $timestamp = round(microtime(true) * 1000);
+        $payload = $timestamp . "\n" . $nonce . "\n" . $json_request . "\n";
+
+        // Generate signature
+        $signature = strtoupper(hash_hmac('SHA512', $payload, $secret_key));
+
+        //curl
+        $ch = curl_init();
+        $headers = array();
+        $headers[] = "Content-Type: application/json";
+        $headers[] = "BinancePay-Timestamp: $timestamp";
+        $headers[] = "BinancePay-Nonce: $nonce";
+        $headers[] = "BinancePay-Certificate-SN: $api_key";
+        $headers[] = "BinancePay-Signature: $signature";
+
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_URL, 'https://bpay.binanceapi.com/binancepay/openapi/v2/order');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_request);
+        $result = json_decode(curl_exec($ch));
+        curl_close($ch);
+
+        if(isset($result->status) && $result->status == 'FAIL' || !isset($result->status)){
+            error_log(print_r('Error', 1));
+            $order->status = 'error';
+            $order->saveOrder();
+        }elseif($result->status == 'SUCCESS'){
+            // Redirect to Binance Pay
+            wp_redirect($result->data->checkoutUrl);
+            exit;
+        }
+    }
+
+
 }
