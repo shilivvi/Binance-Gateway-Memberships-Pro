@@ -50,6 +50,7 @@ class PMProGateway_binance extends PMProGateway
         $options = array(
             'binance_api_key',
             'binance_secret_key',
+            'cryptocompare_api_key',
             'currency',
         );
 
@@ -102,6 +103,17 @@ class PMProGateway_binance extends PMProGateway
             <td>
                 <input type="text" id="binance_secret_key" name="binance_secret_key"
                        value="<?php echo $options['binance_secret_key'] ?? ''; ?>">
+            </td>
+        </tr>
+        <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
+            <th scope="row" valign="top">
+                <label for="cryptocompare_api_key">
+                    <?php esc_html_e('Cryptocompare Api Key:', BINANCEPMP); ?>
+                </label>
+            </th>
+            <td>
+                <input type="text" id="cryptocompare_api_key" name="cryptocompare_api_key"
+                       value="<?php echo $options['cryptocompare_api_key'] ?? ''; ?>">
             </td>
         </tr>
         <?php
@@ -213,13 +225,17 @@ class PMProGateway_binance extends PMProGateway
             $nonce .= $char;
         }
 
+        // Get price in USDT
+        $price = PMProGateway_binance::getUSDTFromUSD($order->PaymentAmount);
+        $price = round(floatval($price), 2);
+
         // Request body
         $request = array(
             'env' => array(
                 'terminalType' => 'WEB',
             ),
             'merchantTradeNo' => $order_id,
-            'orderAmount' => 25.17,
+            'orderAmount' => $price,
             'currency' => 'USDT',
             'goods' => array(
                 'goodsType' => '02',
@@ -256,7 +272,6 @@ class PMProGateway_binance extends PMProGateway
         curl_close($ch);
 
         if(isset($result->status) && $result->status == 'FAIL' || !isset($result->status)){
-            error_log(print_r('Error', 1));
             $order->status = 'error';
             $order->saveOrder();
         }elseif($result->status == 'SUCCESS'){
@@ -266,5 +281,33 @@ class PMProGateway_binance extends PMProGateway
         }
     }
 
+    static function getUSDTFromUSD($usd){
+        $url = 'https://min-api.cryptocompare.com/data/pricemulti?';
+
+        $data = array(
+            'fsyms' => 'USDT',
+            'tsyms' => 'USD',
+            'api_key' => pmpro_getOption('cryptocompare_api_key'),
+        );
+
+        $url_params = http_build_query($data);
+
+        $ch = curl_init($url . $url_params);
+
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $output = json_decode(curl_exec($ch));
+        curl_close($ch);
+
+        if(isset($output->Response) && $output->Response == 'Error'){
+            return $usd;
+        }else{
+            return $output->USDT->USD * $usd;
+        }
+    }
 
 }
