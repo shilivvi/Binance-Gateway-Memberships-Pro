@@ -230,6 +230,13 @@ class PMProGateway_binance extends PMProGateway
         $price = round(floatval($price), 2);
 
         // Request body
+        $url = admin_url("admin-ajax.php") . '?';
+        $cancelData = array(
+            'action' => 'binancepay-ins',
+            'merchantTradeNo' => $order_id,
+        );
+        $callbackUrl = $url . http_build_query($cancelData);
+
         $request = array(
             'env' => array(
                 'terminalType' => 'WEB',
@@ -243,6 +250,10 @@ class PMProGateway_binance extends PMProGateway
                 'referenceGoodsId' => $membership_id,
                 'goodsName' => $membership_name,
             ),
+            'cancelUrl' => $callbackUrl,
+            'returnUrl' => $callbackUrl,
+            // Shot time for tests
+            'orderExpireTime' => round(microtime(true) * 1000) + 100000
         );
 
         $json_request = json_encode($request);
@@ -271,17 +282,18 @@ class PMProGateway_binance extends PMProGateway
         $result = json_decode(curl_exec($ch));
         curl_close($ch);
 
-        if(isset($result->status) && $result->status == 'FAIL' || !isset($result->status)){
+        if (isset($result->status) && $result->status == 'FAIL' || !isset($result->status)) {
             $order->status = 'error';
             $order->saveOrder();
-        }elseif($result->status == 'SUCCESS'){
+        } elseif ($result->status == 'SUCCESS') {
             // Redirect to Binance Pay
             wp_redirect($result->data->checkoutUrl);
             exit;
         }
     }
 
-    static function getUSDTFromUSD($usd){
+    static function getUSDTFromUSD($usd)
+    {
         $url = 'https://min-api.cryptocompare.com/data/pricemulti?';
 
         $data = array(
@@ -303,9 +315,9 @@ class PMProGateway_binance extends PMProGateway
         $output = json_decode(curl_exec($ch));
         curl_close($ch);
 
-        if(isset($output->Response) && $output->Response == 'Error'){
+        if (isset($output->Response) && $output->Response == 'Error') {
             return $usd;
-        }else{
+        } else {
             return $output->USDT->USD * $usd;
         }
     }
