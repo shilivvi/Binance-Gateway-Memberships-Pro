@@ -38,8 +38,8 @@ if (!function_exists('binance_pmp_gateway_load')) {
         add_action('wp_ajax_nopriv_binancepay-ins', 'pmpro_wp_ajax_binancepay_ins');
         add_action('wp_ajax_binancepay-ins', 'pmpro_wp_ajax_binancepay_ins');
 
-        //add_action('wp_ajax_nopriv_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
-        //add_action('wp_ajax_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
+        add_action('wp_ajax_nopriv_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
+        add_action('wp_ajax_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
     }
 
 }
