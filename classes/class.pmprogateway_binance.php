@@ -50,7 +50,7 @@ class PMProGateway_binance extends PMProGateway
         $options = array(
             'binance_api_key',
             'binance_secret_key',
-            'cryptocompare_api_key',
+            //'cryptocompare_api_key',
             'currency',
         );
 
@@ -105,6 +105,8 @@ class PMProGateway_binance extends PMProGateway
                        value="<?php echo $options['binance_secret_key'] ?? ''; ?>">
             </td>
         </tr>
+        <?php
+        /*
         <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
             <th scope="row" valign="top">
                 <label for="cryptocompare_api_key">
@@ -113,10 +115,10 @@ class PMProGateway_binance extends PMProGateway
             </th>
             <td>
                 <input type="text" id="cryptocompare_api_key" name="cryptocompare_api_key"
-                       value="<?php echo $options['cryptocompare_api_key'] ?? ''; ?>">
+                value="<?php echo $options['cryptocompare_api_key'] ?? ''; ?>">
             </td>
         </tr>
-        <?php
+         */
     }
 
     /**
@@ -299,7 +301,7 @@ class PMProGateway_binance extends PMProGateway
         $data = array(
             'fsyms' => 'USDT',
             'tsyms' => 'USD',
-            'api_key' => pmpro_getOption('cryptocompare_api_key'),
+            //'api_key' => pmpro_getOption('cryptocompare_api_key'),
         );
 
         $url_params = http_build_query($data);
