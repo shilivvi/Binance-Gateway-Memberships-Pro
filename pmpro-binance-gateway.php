@@ -31,8 +31,27 @@ if (!function_exists('binance_pmp_gateway_load')) {
 
         require_once(PMPRO_BINANCE_GATEWAY_DIR . "/classes/class.pmprogateway_binance.php");
 
-        // load classes init method
+        // Load classes init method
         add_action('init', array('PMProGateway_binance', 'init'));
+
+        // Register webhooks
+        add_action('wp_ajax_nopriv_binancepay-ins', 'pmpro_wp_ajax_binancepay_ins');
+        add_action('wp_ajax_binancepay-ins', 'pmpro_wp_ajax_binancepay_ins');
+
+        //add_action('wp_ajax_nopriv_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
+        //add_action('wp_ajax_binancepay-webhook', 'pmpro_wp_ajax_binancepay_webhook');
     }
 
+}
+
+function pmpro_wp_ajax_binancepay_ins()
+{
+    require_once(PMPRO_BINANCE_GATEWAY_DIR . "/services/binancepay-ins.php");
+    exit;
+}
+
+function pmpro_wp_ajax_binancepay_webhook()
+{
+    require_once(PMPRO_BINANCE_GATEWAY_DIR . "/services/binancepay-webhook.php");
+    exit;
 }
