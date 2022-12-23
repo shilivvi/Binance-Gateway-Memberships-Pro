@@ -50,6 +50,7 @@ class PMProGateway_binance extends PMProGateway
         $options = array(
             'binance_api_key',
             'binance_secret_key',
+            'binance_error_page_id',
             //'cryptocompare_api_key',
             'currency',
         );
@@ -103,6 +104,26 @@ class PMProGateway_binance extends PMProGateway
             <td>
                 <input type="text" id="binance_secret_key" name="binance_secret_key"
                        value="<?php echo $options['binance_secret_key'] ?? ''; ?>">
+            </td>
+        </tr>
+        <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
+            <th scope="row" valign="top">
+                <label for="binance_error_page_id">
+                    <?php esc_html_e('Payment error page:', BINANCEPMP); ?>
+                </label>
+            </th>
+            <td>
+                <?php
+                wp_dropdown_pages(
+                    array(
+                        'name' => 'binance_error_page_id',
+                        'show_option_none' => '-- ' . __('Choose One', 'paid-memberships-pro') . ' --',
+                        'selected' => $options['binance_error_page_id'],
+                        'post_type' => 'page',
+                        'post_status' => 'publish'
+                    )
+                );
+                ?>
             </td>
         </tr>
         <?php

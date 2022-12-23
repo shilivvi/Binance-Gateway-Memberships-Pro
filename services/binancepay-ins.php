@@ -77,14 +77,21 @@ if ($orderStatus == 'PAID') {
 if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == 'ERROR') {
     $morder = new MemberOrder($merchantTradeNo);
     $morder->updateStatus('failed');
-    wp_redirect(home_url('account'));
+
+    $error_page_id = pmpro_getOption('binance_error_page_id');
+
+    if (empty($error_page_id)) {
+        wp_redirect(home_url());
+    } else {
+        wp_redirect(get_permalink($error_page_id));
+    }
+
     exit;
 }
 
 pmpro_unhandled_webhook();
 wp_redirect(home_url('account'));
 exit;
-
 
 function getOrderInformation($order_id)
 {
