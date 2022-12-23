@@ -63,7 +63,11 @@ if(isset($bizType) && $bizType == 'PAY'){
                 if (pmpro_changeMembershipLevel($custom_level, $morder->user_id) !== false) {
                     $morder->status = "success";
                     $morder->saveOrder();
+
                     do_action("pmpro_after_checkout", $morder->user_id, $morder);
+
+                    $pmproemail = new PMProEmail();
+                    $pmproemail->sendInvoiceEmail(get_userdata($morder->user_id), $morder);
                 }
             }
         }

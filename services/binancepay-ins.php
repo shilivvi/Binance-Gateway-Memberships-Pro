@@ -65,7 +65,12 @@ if ($orderStatus == 'PAID') {
         if (pmpro_changeMembershipLevel($custom_level, $morder->user_id) !== false) {
             $morder->status = "success";
             $morder->saveOrder();
+            $morder->getMemberOrderByID($morder->id);
+
             do_action("pmpro_after_checkout", $morder->user_id, $morder);
+
+            $pmproemail = new PMProEmail();
+            $pmproemail->sendInvoiceEmail(get_userdata($morder->user_id), $morder);
         }
 
         wp_redirect(pmpro_url("confirmation", "?level=" . $morder->membership_level->id));
