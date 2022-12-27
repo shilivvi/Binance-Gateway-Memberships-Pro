@@ -15,10 +15,15 @@ global $wpdb, $gateway_environment, $logstr;
 pmpro_doing_webhook('binance', true);
 
 $merchantTradeNo = pmpro_getParam('merchantTradeNo', 'REQUEST');
+$error_page_id = pmpro_getOption('binance_error_page_id');
 
 if (empty($merchantTradeNo)) {
     //validation failed
-    wp_redirect(home_url());
+    if (empty($error_page_id)) {
+        wp_redirect(home_url());
+    } else {
+        wp_redirect(get_permalink($error_page_id));
+    }
     exit;
 }
 
@@ -31,7 +36,14 @@ if ($orderStatus == 'PAID') {
 
     if (!empty ($morder) && !empty($morder->status) && $morder->status === 'success') {
         // Checkout was already processed
-        wp_redirect(home_url('account'));
+        $morder->notes = '';
+        $morder->saveOrder();
+
+        if (empty($error_page_id)) {
+            wp_redirect(home_url());
+        } else {
+            wp_redirect(get_permalink($error_page_id));
+        }
     } else {
         // Extend membership if renewal.
         // Added manually because pmpro_checkout_level filter is not run.
@@ -63,7 +75,8 @@ if ($orderStatus == 'PAID') {
         );
 
         if (pmpro_changeMembershipLevel($custom_level, $morder->user_id) !== false) {
-            $morder->status = "success";
+            $morder->status = 'success';
+            $morder->notes = '';
             $morder->saveOrder();
             $morder->getMemberOrderByID($morder->id);
 
@@ -82,8 +95,8 @@ if ($orderStatus == 'PAID') {
 if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == 'ERROR') {
     $morder = new MemberOrder($merchantTradeNo);
     $morder->updateStatus('failed');
-
-    $error_page_id = pmpro_getOption('binance_error_page_id');
+    $morder->notes = '';
+    $morder->saveOrder();
 
     if (empty($error_page_id)) {
         wp_redirect(home_url());
@@ -95,7 +108,11 @@ if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == '
 }
 
 pmpro_unhandled_webhook();
-wp_redirect(home_url('account'));
+if (empty($error_page_id)) {
+    wp_redirect(home_url());
+} else {
+    wp_redirect(get_permalink($error_page_id));
+}
 exit;
 
 function getOrderInformation($order_id)

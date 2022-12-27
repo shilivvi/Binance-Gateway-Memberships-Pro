@@ -30,6 +30,8 @@ if(isset($bizType) && $bizType == 'PAY'){
 
             if (!empty ($morder) && !empty($morder->status) && $morder->status === 'success') {
                 // Checkout was already processed
+                $morder->notes = '';
+                $morder->saveOrder();
             } else {
                 // Extend membership if renewal.
                 // Added manually because pmpro_checkout_level filter is not run.
@@ -61,7 +63,8 @@ if(isset($bizType) && $bizType == 'PAY'){
                 );
 
                 if (pmpro_changeMembershipLevel($custom_level, $morder->user_id) !== false) {
-                    $morder->status = "success";
+                    $morder->status = 'success';
+                    $morder->notes = '';
                     $morder->saveOrder();
 
                     do_action("pmpro_after_checkout", $morder->user_id, $morder);
@@ -76,6 +79,8 @@ if(isset($bizType) && $bizType == 'PAY'){
             $merchantTradeNo = $data['merchantTradeNo'];
             $morder = new MemberOrder($merchantTradeNo);
             $morder->updateStatus('failed');
+            $morder->notes = '';
+            $morder->saveOrder();
         }
     }
 }
