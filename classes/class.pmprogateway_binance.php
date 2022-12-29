@@ -310,9 +310,9 @@ class PMProGateway_binance extends PMProGateway
             $order->saveOrder();
         } elseif ($result->status == 'SUCCESS') {
             // Redirect to Binance Pay
-            $order->notes = $result->data->checkoutUrl;
+            $order->notes = $result->data->universalUrl;
             $order->saveOrder();
-            wp_redirect($result->data->checkoutUrl);
+            wp_redirect($result->data->universalUrl);
             exit;
         }
     }
