@@ -276,7 +276,7 @@ class PMProGateway_binance extends PMProGateway
             'cancelUrl' => $callbackUrl,
             'returnUrl' => $callbackUrl,
             // Shot time for tests
-            'orderExpireTime' => round(microtime(true) * 1000) + 100000
+            'orderExpireTime' => round(microtime(true) * 1000) + (60000 * 2)
         );
 
         $json_request = json_encode($request);
