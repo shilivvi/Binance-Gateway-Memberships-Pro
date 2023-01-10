@@ -48,6 +48,7 @@ class PMProGateway_binance extends PMProGateway
     static function getGatewayOptions()
     {
         $options = array(
+            'gateway_environment',
             'binance_api_key',
             'binance_secret_key',
             'binance_error_page_id',
@@ -242,12 +243,11 @@ class PMProGateway_binance extends PMProGateway
         $price = round(floatval($price), 2);
 
         // Get callback url
-        $url = admin_url("admin-ajax.php") . '?';
-        $cancel_data = array(
+        $callback_data = array(
             'action' => 'binancepay-ins',
             'merchantTradeNo' => $order->code,
         );
-        $callback_url = $url . http_build_query($cancel_data);
+        $callback_url = admin_url("admin-ajax.php") . '?' . http_build_query($callback_data);
 
         // Request body
         $request = array(
@@ -265,9 +265,13 @@ class PMProGateway_binance extends PMProGateway
             ),
             'cancelUrl' => $callback_url,
             'returnUrl' => $callback_url,
-            // Shot time for tests
-            'orderExpireTime' => round(microtime(true) * 1000) + (60000 * 2)
         );
+
+        // If test environment
+        if (pmpro_getOption('gateway_environment') === 'sandbox') {
+            // Shot expire time
+            $request['orderExpireTime'] = round(microtime(true) * 1000) + (60000 * 2);
+        }
 
         $pay_url = $binance_client->createOrder($request);
 
