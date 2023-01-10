@@ -20,7 +20,6 @@ if (!isset($headers['binancepay-nonce']) && !isset($headers['binancepay-timestam
 }
 
 $request_body = file_get_contents('php://input');
-$error_page_id = pmpro_getOption('binance_error_page_id');
 $api_key = pmpro_getOption('binance_api_key');
 $secret_key = pmpro_getOption('binance_secret_key');
 $binance_client = new BinancePayClient($api_key, $secret_key);

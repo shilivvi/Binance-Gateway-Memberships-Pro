@@ -9,30 +9,21 @@ if (!defined("ABSPATH")) {
     require_once(dirname(__FILE__) . '/../../../../wp-load.php');
 }
 
-// Some globals
-global $wpdb, $gateway_environment, $logstr;
-
 pmpro_doing_webhook('binance', true);
 
-$error_page_id = pmpro_getOption('binance_error_page_id');
 $api_key = pmpro_getOption('binance_api_key');
 $secret_key = pmpro_getOption('binance_secret_key');
+$error_page_id = pmpro_getOption('binance_error_page_id');
+$success_page_id = pmpro_getOption('binance_success_page_id');
 $merchantTradeNo = pmpro_getParam('merchantTradeNo', 'REQUEST');
 
 if (empty($merchantTradeNo)) {
     //validation failed
-    if (empty($error_page_id)) {
-        wp_redirect(home_url());
-    } else {
-        wp_redirect(get_permalink($error_page_id));
-    }
-    exit;
+    binanceCallbackExit($error_page_id);
 }
 
 $binance_client = new BinancePayClient($api_key, $secret_key);
 $orderStatus = $binance_client->getOrderStatus(array('merchantTradeNo' => $merchantTradeNo));
-
-error_log(print_r($orderStatus, 1));
 
 if ($orderStatus == 'PAID') {
     $morder = new MemberOrder($merchantTradeNo);
@@ -44,11 +35,7 @@ if ($orderStatus == 'PAID') {
         $morder->notes = '';
         $morder->saveOrder();
 
-        if (empty($error_page_id)) {
-            wp_redirect(home_url());
-        } else {
-            wp_redirect(get_permalink($error_page_id));
-        }
+        binanceCallbackExit($error_page_id);
     } else {
         // Extend membership if renewal.
         // Added manually because pmpro_checkout_level filter is not run.
@@ -91,10 +78,13 @@ if ($orderStatus == 'PAID') {
             $pmproemail->sendInvoiceEmail(get_userdata($morder->user_id), $morder);
         }
 
-        wp_redirect(pmpro_url("confirmation", "?level=" . $morder->membership_level->id));
+        if (empty($success_page_id)) {
+            wp_safe_redirect(pmpro_url("confirmation", "?level=" . $morder->membership_level->id));
+        } else {
+            wp_safe_redirect(get_permalink($success_page_id));
+        }
+        exit;
     }
-
-    exit;
 }
 
 if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == 'ERROR') {
@@ -103,19 +93,24 @@ if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == '
     $morder->notes = '';
     $morder->saveOrder();
 
-    if (empty($error_page_id)) {
-        wp_redirect(home_url());
-    } else {
-        wp_redirect(get_permalink($error_page_id));
-    }
+    binanceCallbackExit($error_page_id);
+}
 
+if ($orderStatus == 'INITIAL'){
+    wp_safe_redirect(home_url());
     exit;
 }
 
 pmpro_unhandled_webhook();
-if (empty($error_page_id)) {
-    wp_redirect(home_url());
-} else {
-    wp_redirect(get_permalink($error_page_id));
-}
+binanceCallbackExit($error_page_id);
 exit;
+
+function binanceCallbackExit($page_id)
+{
+    if (empty($page_id)) {
+        wp_safe_redirect(home_url());
+    } else {
+        wp_safe_redirect(get_permalink($page_id));
+    }
+    exit;
+}

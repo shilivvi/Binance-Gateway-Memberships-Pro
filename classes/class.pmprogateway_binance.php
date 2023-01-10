@@ -2,12 +2,6 @@
 
 class PMProGateway_binance extends PMProGateway
 {
-    function PMProGateway($gateway = NULL)
-    {
-        $this->gateway = $gateway;
-        return $this->gateway;
-    }
-
     /**
      * Run on WP init
      */
@@ -45,23 +39,6 @@ class PMProGateway_binance extends PMProGateway
     /**
      * Set payment options for payment settings page.
      */
-    static function getGatewayOptions()
-    {
-        $options = array(
-            'gateway_environment',
-            'binance_api_key',
-            'binance_secret_key',
-            'binance_error_page_id',
-            //'cryptocompare_api_key',
-            'currency',
-        );
-
-        return $options;
-    }
-
-    /**
-     * Set payment options for payment settings page.
-     */
     static function pmpro_payment_options($options)
     {
         //get options
@@ -69,6 +46,25 @@ class PMProGateway_binance extends PMProGateway
 
         //merge with others
         $options = array_merge($binance_options, $options);
+
+        return $options;
+    }
+
+    /**
+     * Set payment options for payment settings page.
+     */
+    static function getGatewayOptions()
+    {
+        $options = array(
+            'gateway_environment',
+            'binance_api_key',
+            'binance_secret_key',
+            'binance_error_page_id',
+            'binance_success_page_id',
+            'cryptocompare_api_key',
+            'binance_currency',
+            'currency',
+        );
 
         return $options;
     }
@@ -88,23 +84,68 @@ class PMProGateway_binance extends PMProGateway
         <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
             <th scope="row" valign="top">
                 <label for="binance_api_key">
-                    <?php esc_html_e('Binance Api Key:', BINANCEPMP); ?>
+                    <?php esc_html_e('Api Key:', BINANCEPMP); ?>
                 </label>
             </th>
             <td colspan="2">
                 <input type="text" id="binance_api_key" name="binance_api_key"
                        value="<?php echo $options['binance_api_key'] ?? ''; ?>">
+                <p class="description">
+                    <?php _e('You can get this key in the <a href="https://merchant.binance.com/en/dashboard/developers/api-keys" target="_blank">Binance Pay dashboard</a>', BINANCEPMP); ?>
+                </p>
             </td>
         </tr>
         <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
             <th scope="row" valign="top">
                 <label for="binance_secret_key">
-                    <?php esc_html_e('Binance Secret Key:', BINANCEPMP); ?>
+                    <?php esc_html_e('Secret Key:', BINANCEPMP); ?>
                 </label>
             </th>
             <td>
                 <input type="text" id="binance_secret_key" name="binance_secret_key"
                        value="<?php echo $options['binance_secret_key'] ?? ''; ?>">
+                <p class="description">
+                    <?php _e('You can get this key in the <a href="https://merchant.binance.com/en/dashboard/developers/api-keys" target="_blank">Binance Pay dashboard</a>', BINANCEPMP); ?>
+                </p>
+            </td>
+        </tr>
+        <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
+            <th scope="row" valign="top">
+                <label for="cryptocompare_api_key">
+                    <?php esc_html_e('Cryptocompare Api Key:', BINANCEPMP); ?>
+                </label>
+            </th>
+            <td>
+                <input type="text" id="cryptocompare_api_key" name="cryptocompare_api_key"
+                       value="<?php echo $options['cryptocompare_api_key'] ?? ''; ?>">
+                <p class="description">
+                    <?php _e('The plugin uses <a href="https://www.cryptocompare.com/" target="_blank">CryptoCompare</a> to transfer currency to cryptocurrency. The plugin uses a free version of this service, but you can buy the <a href="https://min-api.cryptocompare.com/pricing" target="_blank">API key</a> and specify it here, which will remove the restrictions of the free version.', BINANCEPMP); ?>
+                </p>
+            </td>
+        </tr>
+        <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
+            <th scope="row" valign="top">
+                <label for="binance_currency">
+                    <?php esc_html_e('Currency in the order:', BINANCEPMP); ?>
+                </label>
+            </th>
+            <td>
+                <select name="binance_currency" id="binance_currency">
+                    <option value=""></option>
+                    <?php
+                    $supported_currencies = array('BUSD', 'USDT', 'MBOX');
+                    foreach ($supported_currencies as $currency) {
+                        if ($currency === $options['binance_currency']) {
+                            echo '<option value="' . $currency . '" selected>' . $currency . '</option>';
+                        } else {
+                            echo '<option value="' . $currency . '">' . $currency . '</option>';
+                        }
+                    }
+                    ?>
+                </select>
+                <p class="description">
+                    <?php _e("Binance pay allows you to create an order to pay in only three crypto currencies (BUSD, USDT, MBOX). Select the cryptocurrency from which the order will be created, and USDT will be used by default. The currency you can select in the 'Currency and Tax Settings' section is the main one for the site system. The plugin simply transfers the main currency of the site into one of the crypto currencies you choose to create the order.", BINANCEPMP); ?>
+                </p>
             </td>
         </tr>
         <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
@@ -125,22 +166,35 @@ class PMProGateway_binance extends PMProGateway
                     )
                 );
                 ?>
+                <p class="description">
+                    <?php _e('User will be redirected to this page with payment problem, by default is home page', BINANCEPMP); ?>
+                </p>
             </td>
         </tr>
-        <?php
-        /*
         <tr class="gateway gateway_binance" <?php echo $gateway != 'binance' ? 'style="display: none;"' : ''; ?>>
             <th scope="row" valign="top">
-                <label for="cryptocompare_api_key">
-                    <?php esc_html_e('Cryptocompare Api Key:', BINANCEPMP); ?>
+                <label for="binance_success_page_id">
+                    <?php esc_html_e('Payment success page:', BINANCEPMP); ?>
                 </label>
             </th>
             <td>
-                <input type="text" id="cryptocompare_api_key" name="cryptocompare_api_key"
-                value="<?php echo $options['cryptocompare_api_key'] ?? ''; ?>">
+                <?php
+                wp_dropdown_pages(
+                    array(
+                        'name' => 'binance_success_page_id',
+                        'show_option_none' => '-- ' . __('Choose One', 'paid-memberships-pro') . ' --',
+                        'selected' => $options['binance_success_page_id'],
+                        'post_type' => 'page',
+                        'post_status' => 'publish'
+                    )
+                );
+                ?>
+                <p class="description">
+                    <?php _e('User will be redirected to this page after successful payment, default is invoice page', BINANCEPMP); ?>
+                </p>
             </td>
         </tr>
-         */
+        <?php
     }
 
     /**
@@ -192,22 +246,6 @@ class PMProGateway_binance extends PMProGateway
     }
 
     /**
-     * Process checkout.
-     */
-    function process(&$order)
-    {
-        if (empty($order->code)) {
-            $order->code = $order->getRandomCode();
-        }
-
-        //just save, the user will go to binance to pay
-        $order->status = 'pending';
-        $order->saveOrder();
-
-        return true;
-    }
-
-    /**
      * Instead of change membership levels, send users to BinancePay to pay.
      */
     static function pmpro_checkout_before_change_membership_level($user_id, $morder)
@@ -231,6 +269,27 @@ class PMProGateway_binance extends PMProGateway
         $morder->Gateway->sendToBinancePay($morder);
     }
 
+    function PMProGateway($gateway = NULL)
+    {
+        $this->gateway = $gateway;
+        return $this->gateway;
+    }
+
+    /**
+     * Process checkout.
+     */
+    function process(&$order)
+    {
+        if (empty($order->code)) {
+            $order->code = $order->getRandomCode();
+        }
+
+        //just save, the user will go to binance to pay
+        $order->status = 'pending';
+        $order->saveOrder();
+
+        return true;
+    }
 
     function sendToBinancePay(&$order)
     {
@@ -238,9 +297,11 @@ class PMProGateway_binance extends PMProGateway
         $secret_key = pmpro_getOption('binance_secret_key');
         $binance_client = new BinancePayClient($api_key, $secret_key);
 
-        // Get price in USDT
-        $price = PMProGateway_binance::getUSDTFromUSD($order->PaymentAmount);
-        $price = round(floatval($price), 2);
+        // Get price in cryptocurrency
+        $binance_currency = pmpro_getOption('binance_currency');
+        $pmpro_currency = pmpro_getOption('currency');
+        $converted_price = PMProGateway_binance::getUSDTFromUSD($pmpro_currency, $binance_currency, (float)$order->PaymentAmount);
+        $converted_price = round(floatval($converted_price), 2);
 
         // Get callback url
         $callback_data = array(
@@ -255,7 +316,7 @@ class PMProGateway_binance extends PMProGateway
                 'terminalType' => 'WEB',
             ),
             'merchantTradeNo' => $order->code,
-            'orderAmount' => $price,
+            'orderAmount' => $converted_price,
             'currency' => 'USDT',
             'goods' => array(
                 'goodsType' => '02',
@@ -287,15 +348,31 @@ class PMProGateway_binance extends PMProGateway
         }
     }
 
-    static function getUSDTFromUSD($usd)
+
+    /**
+     * This feature converts currency
+     *
+     * @param string $from
+     * @param string $to
+     * @param float $amount
+     * @return float|false
+     */
+    static function getUSDTFromUSD(string $from, string $to, float $amount)
     {
         $url = 'https://min-api.cryptocompare.com/data/pricemulti?';
 
+        if(empty($to)){
+            $to = 'USDT';
+        }
+
         $data = array(
-            'fsyms' => 'USDT',
-            'tsyms' => 'USD',
-            //'api_key' => pmpro_getOption('cryptocompare_api_key'),
+            'fsyms' => $to,
+            'tsyms' => $from,
         );
+
+        if (!empty(pmpro_getOption('cryptocompare_api_key'))) {
+            $data['api_key'] = pmpro_getOption('cryptocompare_api_key');
+        }
 
         $url_params = http_build_query($data);
 
@@ -307,13 +384,13 @@ class PMProGateway_binance extends PMProGateway
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-        $output = json_decode(curl_exec($ch));
+        $output = json_decode(curl_exec($ch), true);
         curl_close($ch);
 
-        if (isset($output->Response) && $output->Response == 'Error') {
-            return $usd;
+        if (isset($output['Response']) && $output['Response'] == 'Error') {
+            return false;
         } else {
-            return $output->USDT->USD * $usd;
+            return $output[$to][$from] * $amount;
         }
     }
 
