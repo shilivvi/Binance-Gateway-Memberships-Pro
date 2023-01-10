@@ -233,87 +233,53 @@ class PMProGateway_binance extends PMProGateway
 
     function sendToBinancePay(&$order)
     {
-        $order_id = $order->code;
-        $membership_id = $order->membership_level->id;
-        $membership_name = $order->membership_level->name;
-        $chars_for_nonce = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $api_key = pmpro_getOption('binance_api_key');
         $secret_key = pmpro_getOption('binance_secret_key');
-
-        // Generate nonce
-        $nonce = '';
-        for ($i = 1; $i <= 32; $i++) {
-            $pos = mt_rand(0, strlen($chars_for_nonce) - 1);
-            $char = $chars_for_nonce[$pos];
-            $nonce .= $char;
-        }
+        $binance_client = new BinancePayClient($api_key, $secret_key);
 
         // Get price in USDT
         $price = PMProGateway_binance::getUSDTFromUSD($order->PaymentAmount);
         $price = round(floatval($price), 2);
 
-        // Request body
+        // Get callback url
         $url = admin_url("admin-ajax.php") . '?';
-        $cancelData = array(
+        $cancel_data = array(
             'action' => 'binancepay-ins',
-            'merchantTradeNo' => $order_id,
+            'merchantTradeNo' => $order->code,
         );
-        $callbackUrl = $url . http_build_query($cancelData);
+        $callback_url = $url . http_build_query($cancel_data);
 
+        // Request body
         $request = array(
             'env' => array(
                 'terminalType' => 'WEB',
             ),
-            'merchantTradeNo' => $order_id,
+            'merchantTradeNo' => $order->code,
             'orderAmount' => $price,
             'currency' => 'USDT',
             'goods' => array(
                 'goodsType' => '02',
                 'goodsCategory' => 'Z000',
-                'referenceGoodsId' => $membership_id,
-                'goodsName' => $membership_name,
+                'referenceGoodsId' => $order->membership_level->id,
+                'goodsName' => $order->membership_level->name,
             ),
-            'cancelUrl' => $callbackUrl,
-            'returnUrl' => $callbackUrl,
+            'cancelUrl' => $callback_url,
+            'returnUrl' => $callback_url,
             // Shot time for tests
             'orderExpireTime' => round(microtime(true) * 1000) + (60000 * 2)
         );
 
-        $json_request = json_encode($request);
+        $pay_url = $binance_client->createOrder($request);
 
-        // Generate payload
-        $timestamp = round(microtime(true) * 1000);
-        $payload = $timestamp . "\n" . $nonce . "\n" . $json_request . "\n";
-
-        // Generate signature
-        $signature = strtoupper(hash_hmac('SHA512', $payload, $secret_key));
-
-        //curl
-        $ch = curl_init();
-        $headers = array();
-        $headers[] = "Content-Type: application/json";
-        $headers[] = "BinancePay-Timestamp: $timestamp";
-        $headers[] = "BinancePay-Nonce: $nonce";
-        $headers[] = "BinancePay-Certificate-SN: $api_key";
-        $headers[] = "BinancePay-Signature: $signature";
-
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_URL, 'https://bpay.binanceapi.com/binancepay/openapi/v2/order');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $json_request);
-        $result = json_decode(curl_exec($ch));
-        curl_close($ch);
-
-        if (isset($result->status) && $result->status == 'FAIL' || !isset($result->status)) {
+        if ($pay_url) {
+            // Redirect to Binance Pay
+            $order->notes = $pay_url;
+            $order->saveOrder();
+            wp_redirect($pay_url);
+            exit;
+        } else {
             $order->status = 'error';
             $order->saveOrder();
-        } elseif ($result->status == 'SUCCESS') {
-            // Redirect to Binance Pay
-            $order->notes = $result->data->universalUrl;
-            $order->saveOrder();
-            wp_redirect($result->data->universalUrl);
-            exit;
         }
     }
 

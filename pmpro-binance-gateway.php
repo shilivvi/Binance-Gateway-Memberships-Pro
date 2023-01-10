@@ -29,6 +29,7 @@ if (!function_exists('binance_pmp_gateway_load')) {
         }
 
         require_once(PMPRO_BINANCE_GATEWAY_DIR . "/classes/class.pmprogateway_binance.php");
+        require_once(PMPRO_BINANCE_GATEWAY_DIR . "/services/binancepay-client.php");
 
         // Load classes init method
         add_action('init', array('PMProGateway_binance', 'init'));
