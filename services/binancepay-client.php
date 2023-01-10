@@ -44,6 +44,99 @@ class BinancePayClient
     }
 
     /**
+     * Create order and return link this order or false on error
+     * https://developers.binance.com/docs/binance-pay/api-order-create-v2
+     *
+     * @param array $requestData
+     * @return string|false
+     */
+    public function createOrder(array $requestData)
+    {
+        $this->clintPDO = $requestData;
+        $response = $this->doRequest('v2/order');
+
+        if ($response === false) {
+            return false;
+        }
+
+        return $response->data->universalUrl;
+    }
+
+    /**
+     *  Get order by prepayId or merchantTradeNo
+     *  https://developers.binance.com/docs/binance-pay/api-order-query-v2
+     *
+     * @param array $requestData
+     * @return string|false
+     */
+    public function getOrderStatus(array $requestData)
+    {
+        $this->clintPDO = $requestData;
+        $response = $this->doRequest('v2/order/query');
+
+        if ($response === false) {
+            return false;
+        }
+
+        return $response->data->status;
+    }
+
+    /**
+     * Binance recommend verifying the signature using the public key issued from Binance Pay
+     * https://developers.binance.com/docs/binance-pay/webhook-common
+     *
+     * 1. Build payload
+     * 2. Decode the Signature
+     * 3. Get public key
+     * 4. Verify the content with public key
+     *
+     * @param string $timestamp
+     * @param string $nonce
+     * @param string $signature
+     * @param string $bodyData
+     * @return bool
+     */
+    public function verifyWebhookNotice(string $timestamp, string $nonce, string $signature, string $bodyData)
+    {
+        // Build payload
+        $payload = $timestamp . "\n" . $nonce . "\n" . $bodyData . "\n";
+
+        // Decode the Signature
+        $decodedSignature = base64_decode($signature);
+
+        // Get public key
+        $publicKey = $this->getPublicKey();
+
+        if ($publicKey === false) {
+            return false;
+        }
+
+        // Verify the content with public key
+        if (openssl_verify($payload, $decodedSignature, $publicKey, OPENSSL_ALGO_SHA256)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get public key
+     * https://developers.binance.com/docs/binance-pay/webhook-query-certificate
+     *
+     * @return false|string
+     */
+    public function getPublicKey()
+    {
+        $response = $this->doRequest('certificates');
+
+        if ($response === false) {
+            return false;
+        }
+
+        return $response->data[0]->certPublic;
+    }
+
+    /**
      * Generate random token 22 characters long
      *
      * @return string
