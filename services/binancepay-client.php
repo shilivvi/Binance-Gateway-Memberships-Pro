@@ -42,4 +42,22 @@ class BinancePayClient
         $this->apiKey = $apiKey;
         $this->secretKey = $secretKey;
     }
+
+    /**
+     * Generate random token 22 characters long
+     *
+     * @return string
+     */
+    private function getNonce()
+    {
+        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $nonce = '';
+
+        for ($i = 1; $i <= 32; $i++) {
+            $pos = mt_rand(0, strlen($chars) - 1);
+            $nonce .= $chars[$pos];
+        }
+
+        return $nonce;
+    }
 }
