@@ -9,11 +9,10 @@ if (!defined("ABSPATH")) {
     require_once(dirname(__FILE__) . '/../../../../wp-load.php');
 }
 
-error_log(print_r('webhook', 1));
 pmpro_doing_webhook('binance', true);
 
 // Get request headers
-$headers = getallheaders();
+$headers = array_change_key_case(getallheaders(), CASE_LOWER);
 
 // Check necessary headers
 if (!isset($headers['binancepay-nonce']) && !isset($headers['binancepay-timestamp']) && !isset($headers['binancepay-signature'])) {
