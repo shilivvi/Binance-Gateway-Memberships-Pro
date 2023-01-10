@@ -14,8 +14,10 @@ global $wpdb, $gateway_environment, $logstr;
 
 pmpro_doing_webhook('binance', true);
 
-$merchantTradeNo = pmpro_getParam('merchantTradeNo', 'REQUEST');
 $error_page_id = pmpro_getOption('binance_error_page_id');
+$api_key = pmpro_getOption('binance_api_key');
+$secret_key = pmpro_getOption('binance_secret_key');
+$merchantTradeNo = pmpro_getParam('merchantTradeNo', 'REQUEST');
 
 if (empty($merchantTradeNo)) {
     //validation failed
@@ -27,7 +29,10 @@ if (empty($merchantTradeNo)) {
     exit;
 }
 
-$orderStatus = getOrderInformation($merchantTradeNo);
+$binance_client = new BinancePayClient($api_key, $secret_key);
+$orderStatus = $binance_client->getOrderStatus(array('merchantTradeNo' => $merchantTradeNo));
+
+error_log(print_r($orderStatus, 1));
 
 if ($orderStatus == 'PAID') {
     $morder = new MemberOrder($merchantTradeNo);
@@ -114,58 +119,3 @@ if (empty($error_page_id)) {
     wp_redirect(get_permalink($error_page_id));
 }
 exit;
-
-function getOrderInformation($order_id)
-{
-    $chars_for_nonce = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $api_key = pmpro_getOption('binance_api_key');
-    $secret_key = pmpro_getOption('binance_secret_key');
-
-    // Generate nonce
-    $nonce = '';
-    for ($i = 1; $i <= 32; $i++) {
-        $pos = mt_rand(0, strlen($chars_for_nonce) - 1);
-        $char = $chars_for_nonce[$pos];
-        $nonce .= $char;
-    }
-
-    // Request body
-    $request = array(
-        'merchantTradeNo' => $order_id,
-    );
-
-    $json_request = json_encode($request);
-
-    // Generate payload
-    $timestamp = round(microtime(true) * 1000);
-    $payload = $timestamp . "\n" . $nonce . "\n" . $json_request . "\n";
-
-    // Generate signature
-    $signature = strtoupper(hash_hmac('SHA512', $payload, $secret_key));
-
-    //curl
-    $ch = curl_init();
-    $headers = array();
-    $headers[] = "Content-Type: application/json";
-    $headers[] = "BinancePay-Timestamp: $timestamp";
-    $headers[] = "BinancePay-Nonce: $nonce";
-    $headers[] = "BinancePay-Certificate-SN: $api_key";
-    $headers[] = "BinancePay-Signature: $signature";
-
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_URL, 'https://bpay.binanceapi.com/binancepay/openapi/v2/order/query');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $json_request);
-    $result = json_decode(curl_exec($ch));
-    curl_close($ch);
-
-    if (isset($result->status) && $result->status == 'FAIL' || !isset($result->status)) {
-        $morder = new MemberOrder($order_id);
-        $morder->updateStatus('error');
-        wp_redirect(home_url());
-        exit;
-    } elseif ($result->status == 'SUCCESS') {
-        return $result->data->status;
-    }
-}
