@@ -288,6 +288,8 @@ class PMProGateway_binance extends PMProGateway
         $order->status = 'pending';
         $order->saveOrder();
 
+        apply_filters('pmpro_binance_pay_process_filter', $order );
+
         return true;
     }
 
@@ -300,7 +302,7 @@ class PMProGateway_binance extends PMProGateway
         // Get price in cryptocurrency
         $binance_currency = pmpro_getOption('binance_currency');
         $pmpro_currency = pmpro_getOption('currency');
-        $converted_price = PMProGateway_binance::getUSDTFromUSD($pmpro_currency, $binance_currency, (float)$order->PaymentAmount);
+        $converted_price = PMProGateway_binance::getUSDTFromUSD($pmpro_currency, $binance_currency, (float)$order->total);
         $converted_price = round(floatval($converted_price), 2);
 
         // Get callback url
