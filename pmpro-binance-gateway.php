@@ -2,7 +2,7 @@
 /*
 Plugin Name: 		Binance Gateway Addon for Memberships Pro
 Description: 		Binance Gateway Addon for Memberships Pro
-Version: 			0.4
+Version: 			0.4.2
 Author: 			PROYKEY
 License: 			GPLv2
 License URI: 		https://proykey.by
