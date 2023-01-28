@@ -89,7 +89,7 @@ if ($orderStatus == 'PAID') {
 
 if ($orderStatus == 'EXPIRED' || $orderStatus == 'CANCELED' || $orderStatus == 'ERROR') {
     $morder = new MemberOrder($merchantTradeNo);
-    $morder->updateStatus('failed');
+    $morder->updateStatus('error');
     $morder->notes = '';
     $morder->saveOrder();
 

@@ -97,7 +97,7 @@ if (!empty($biz_type) && !empty($biz_status) && $biz_type === 'PAY') {
             }
         }
     } elseif ($biz_status === 'PAY_CLOSED') {
-        $order->updateStatus('failed');
+        $order->updateStatus('error');
         $order->notes = '';
         $order->saveOrder();
     }
