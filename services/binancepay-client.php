@@ -48,7 +48,7 @@ class BinancePayClient
      * https://developers.binance.com/docs/binance-pay/api-order-create-v2
      *
      * @param array $requestData
-     * @return string|false
+     * @return array|false
      */
     public function createOrder(array $requestData)
     {
@@ -59,7 +59,10 @@ class BinancePayClient
             return false;
         }
 
-        return $response->data->universalUrl;
+        return [
+            'url' => $response->data->universalUrl,
+            'transaction_id' => $response->data->prepayId
+        ];
     }
 
     /**

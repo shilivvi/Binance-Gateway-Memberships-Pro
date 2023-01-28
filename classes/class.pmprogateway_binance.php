@@ -336,13 +336,14 @@ class PMProGateway_binance extends PMProGateway
             $request['orderExpireTime'] = round(microtime(true) * 1000) + (60000 * 2);
         }
 
-        $pay_url = $binance_client->createOrder($request);
+        $response = $binance_client->createOrder($request);
 
-        if ($pay_url) {
+        if (is_array($response)) {
             // Redirect to Binance Pay
-            $order->notes = $pay_url;
+            $order->notes = $response['url'];
+            $order->payment_transaction_id = $response['transaction_id'];
             $order->saveOrder();
-            wp_redirect($pay_url);
+            wp_redirect($response['url']);
             exit;
         } else {
             $order->status = 'error';
